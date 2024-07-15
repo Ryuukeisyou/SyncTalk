@@ -1,0 +1,12 @@
+__pycache__/
+venv/
+data/
+model/
+freqencoder/build
+freqencoder/freqencoder.egg-info
+shencoder/build
+shencoder/shencoder.egg-info
+gridencoder/build
+gridencoder/gridencoder.egg-info
+raymarching/build
+raymarching/raymarching_face.egg-info
