@@ -1,7 +1,11 @@
 __pycache__/
+launch.json
 venv/
 data/
 model/
+build/
+dist/
+python-3.12.4-portable/
 freqencoder/build
 freqencoder/freqencoder.egg-info
 shencoder/build
