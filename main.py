@@ -238,6 +238,7 @@ if __name__ == '__main__':
         with open(os.path.join(opt.workspace, 'opt.txt'), 'a') as f:
             f.write(str(opt))
         if opt.gui:
+            from nerf_triplane.gui import NeRFGUI
             with NeRFGUI(opt, trainer, train_loader) as gui:
                 gui.render()
         

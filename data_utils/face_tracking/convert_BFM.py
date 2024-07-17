@@ -1,8 +1,13 @@
+import os
 import numpy as np
 from scipy.io import loadmat
 
-original_BFM = loadmat("3DMM/01_MorphableModel.mat")
-sub_inds = np.load("3DMM/topology_info.npy", allow_pickle=True).item()["sub_inds"]
+cur_dir = os.path.dirname(__file__)
+mat_path = os.path.join(cur_dir, "3DMM/01_MorphableModel.mat")
+topology_info_path = os.path.join(cur_dir, "3DMM/topology_info.npy")
+
+original_BFM = loadmat(mat_path)
+sub_inds = np.load(topology_info_path, allow_pickle=True).item()["sub_inds"]
 
 shapePC = original_BFM["shapePC"]
 shapeEV = original_BFM["shapeEV"]
@@ -22,9 +27,12 @@ mu_shape = mu_shape[sub_inds, :].reshape(-1)
 b_tex = b_tex[:, sub_inds, :].reshape(199, -1)
 mu_tex = mu_tex[sub_inds, :].reshape(-1)
 
-exp_info = np.load("3DMM/exp_info.npy", allow_pickle=True).item()
+exp_info_path = os.path.join(cur_dir, "3DMM/exp_info.npy")
+_3dmm_info_path = os.path.join(cur_dir, "3DMM/3DMM_info.npy")
+
+exp_info = np.load(exp_info_path, allow_pickle=True).item()
 np.save(
-    "3DMM/3DMM_info.npy",
+    _3dmm_info_path,
     {
         "mu_shape": mu_shape,
         "b_shape": b_shape,
