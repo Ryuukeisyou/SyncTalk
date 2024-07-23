@@ -3,12 +3,6 @@ import soundfile as sf
 import numpy as np
 import torch
 
-print("Loading the Wav2Vec2 Processor...")
-wav2vec2_processor = Wav2Vec2Processor.from_pretrained("facebook/hubert-large-ls960-ft")
-print("Loading the HuBERT Model...")
-hubert_model = HubertModel.from_pretrained("facebook/hubert-large-ls960-ft")
-
-
 def get_hubert_from_16k_wav(wav_16k_name):
     speech_16k, _ = sf.read(wav_16k_name)
     hubert = get_hubert_from_16k_speech(speech_16k)
@@ -77,9 +71,15 @@ import librosa
 
 parser = ArgumentParser()
 parser.add_argument('--wav', type=str, help='')
+parser.add_argument('--model_path', type=str, help='')
 args = parser.parse_args()
 
 wav_name = args.wav
+model_path = "facebook/hubert-large-ls960-ft" if args.model_path is None else args.model_path
+print("Loading the Wav2Vec2 Processor...")
+wav2vec2_processor = Wav2Vec2Processor.from_pretrained(model_path)
+print("Loading the HuBERT Model...")
+hubert_model = HubertModel.from_pretrained(model_path)
 
 speech, sr = sf.read(wav_name)
 speech_16k = librosa.resample(speech, orig_sr=sr, target_sr=16000)

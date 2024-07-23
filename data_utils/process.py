@@ -18,16 +18,16 @@ def extract_audio(path, out_path, sample_rate=16000):
     os.system(cmd)
     print(f'[INFO] ===== extracted audio =====')
 
-def extract_audio_features(path, mode='ave'):
+def extract_audio_features(path, mode='ave', python_path='python'):
 
     print(f'[INFO] ===== extract audio labels for {path} =====')
     if mode == 'ave':
         print(f'AVE has been integrated into the training code, no need to extract audio features')
     elif mode == "deepspeech": # deepspeech
-        cmd = f'python data_utils/deepspeech_features/extract_ds_features.py --input {path}'
+        cmd = f'{python_path} data_utils/deepspeech_features/extract_ds_features.py --input {path}'
         os.system(cmd)
     elif mode == 'hubert':
-        cmd = f'python data_utils/hubert.py --wav {path}' # save to data/<name>_hu.npy
+        cmd = f'{python_path} data_utils/hubert.py --wav {path} --model_path model/hubert-large-ls960-ft' # save to data/<name>_hu.npy
         os.system(cmd)
     print(f'[INFO] ===== extracted audio labels =====')
 
@@ -40,11 +40,13 @@ def extract_images(path, out_path, fps=25):
     print(f'[INFO] ===== extracted images =====')
 
 
-def extract_semantics(ori_imgs_dir, parsing_dir):
+def extract_semantics(ori_imgs_dir, parsing_dir, python_path='python'):
 
     print(f'[INFO] ===== extract semantics from {ori_imgs_dir} to {parsing_dir} =====')
-    cmd = f'python data_utils/face_parsing/test.py --respath={parsing_dir} --imgpath={ori_imgs_dir}'
+    cmd = f'{python_path} data_utils/face_parsing/test.py --respath={parsing_dir} --imgpath={ori_imgs_dir}'
     os.system(cmd)
+    # from face_parsing.test import evaluate
+    # evaluate(respth=parsing_dir, dspth=ori_imgs_dir, cp="data_utils/face_parsing/79999_iter.pth")
     print(f'[INFO] ===== extracted semantics =====')
 
 
@@ -243,7 +245,7 @@ def extract_torso_and_gt(base_dir, ori_imgs_dir):
     print(f'[INFO] ===== extracted torso and gt images =====')
 
 
-def face_tracking(ori_imgs_dir):
+def face_tracking(ori_imgs_dir, python_path='python'):
 
     print(f'[INFO] ===== perform face tracking =====')
 
@@ -253,14 +255,16 @@ def face_tracking(ori_imgs_dir):
     tmp_image = cv2.imread(image_paths[0], cv2.IMREAD_UNCHANGED) # [H, W, 3]
     h, w = tmp_image.shape[:2]
 
-    cmd = f'python data_utils/face_tracking/face_tracker.py --path={ori_imgs_dir} --img_h={h} --img_w={w} --frame_num={len(image_paths)}'
-
+    cmd = f'{python_path} data_utils/face_tracking/face_tracker.py --path={ori_imgs_dir} --img_h={h} --img_w={w} --frame_num={len(image_paths)}'
     os.system(cmd)
+
+    # from data_utils.face_tracking.face_tracker import track_face
+    # track_face(path=ori_imgs_dir, start_id=0, end_id=len(image_paths), h=h, w=w)
 
     print(f'[INFO] ===== finished face tracking =====')
 
 # ref: https://github.com/ShunyuYao/DFA-NeRF
-def extract_flow(base_dir,ori_imgs_dir,mask_dir, flow_dir):
+def extract_flow(base_dir,ori_imgs_dir,mask_dir, flow_dir, python_path='python'):
     print(f'[INFO] ===== extract flow =====')
     torch.cuda.empty_cache()
     ref_id = 2
@@ -279,7 +283,7 @@ def extract_flow(base_dir,ori_imgs_dir,mask_dir, flow_dir):
                        base_dir + '/ori_imgs/' + '{:d}.jpg '.format(i) +
                        base_dir + '/face_mask/' + '{:d}.png\n'.format(i))
         file.close()
-    ext_flow_cmd = 'python data_utils/UNFaceFlow/test_flow.py --datapath=' + base_dir + '/flow_list.txt ' + \
+    ext_flow_cmd = f'{python_path} data_utils/UNFaceFlow/test_flow.py --datapath=' + base_dir + '/flow_list.txt ' + \
         '--savepath=' + base_dir + '/flow_result' + \
         ' --width=' + str(w) + ' --height=' + str(h)
     os.system(ext_flow_cmd)
@@ -349,13 +353,13 @@ def extract_flow(base_dir,ori_imgs_dir,mask_dir, flow_dir):
             track_xys[i, j, 1] = y + flow[1, y, x]
     np.save(os.path.join(base_dir, 'track_xys.npy'), track_xys)
 
-    pose_opt_cmd = 'python data_utils/face_tracking/bundle_adjustment.py --path=' + base_dir + ' --img_h=' + \
+    pose_opt_cmd = f'{python_path} data_utils/face_tracking/bundle_adjustment.py --path=' + base_dir + ' --img_h=' + \
         str(h) + ' --img_w=' + str(w)
     os.system(pose_opt_cmd)
 
-def extract_blendshape(base_dir):
+def extract_blendshape(base_dir, python_path='python'):
     print(f'[INFO] ===== extract blendshape =====')
-    blendshape_cmd = 'python data_utils/blendshape_capture/main.py --path=' + base_dir
+    blendshape_cmd = f'{python_path} data_utils/blendshape_capture/main.py --path=' + base_dir
     os.system(blendshape_cmd)
 
 
@@ -420,6 +424,7 @@ if __name__ == '__main__':
     parser.add_argument('path', type=str, help="path to video file")
     parser.add_argument('--task', type=int, default=-1, help="-1 means all")
     parser.add_argument('--asr', type=str, default='ave', help="ave, hubert or deepspeech")
+    parser.add_argument('--python_path', type=str, default='python')
 
 
     opt = parser.parse_args()
@@ -446,7 +451,7 @@ if __name__ == '__main__':
     # extract audio
     if opt.task == -1 or opt.task == 1:
         extract_audio(opt.path, wav_path)
-        extract_audio_features(wav_path, mode=opt.asr)
+        extract_audio_features(wav_path, mode=opt.asr, python_path=opt.python_path)
 
     # extract images
     if opt.task == -1 or opt.task == 2:
@@ -454,7 +459,7 @@ if __name__ == '__main__':
 
     # face parsing
     if opt.task == -1 or opt.task == 3:
-        extract_semantics(ori_imgs_dir, parsing_dir)
+        extract_semantics(ori_imgs_dir, parsing_dir, python_path=opt.python_path)
 
     # extract bg
     if opt.task == -1 or opt.task == 4:
@@ -470,15 +475,15 @@ if __name__ == '__main__':
 
     # face tracking
     if opt.task == -1 or opt.task == 7:
-        face_tracking(ori_imgs_dir)
+        face_tracking(ori_imgs_dir, python_path=opt.python_path)
 
     # extract flow & pose optimization
     if opt.task == -1 or opt.task == 8:
-        extract_flow(base_dir, ori_imgs_dir, mask_imgs_dir, flow_dir)
+        extract_flow(base_dir, ori_imgs_dir, mask_imgs_dir, flow_dir, python_path=opt.python_path)
 
     # extract blendshape
     if opt.task == -1 or opt.task == 9:
-        extract_blendshape(base_dir)
+        extract_blendshape(base_dir, python_path=opt.python_path)
 
     # save transforms.json
     if opt.task == -1 or opt.task == 10:

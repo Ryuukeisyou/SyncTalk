@@ -1,3 +1,5 @@
+*:Zone.Identifier
+*.log
 __pycache__/
 launch.json
 venv/
@@ -5,7 +7,7 @@ data/
 model/
 build/
 dist/
-python-3.12.4-portable/
+workspace/
 freqencoder/build
 freqencoder/freqencoder.egg-info
 shencoder/build
@@ -14,3 +16,11 @@ gridencoder/build
 gridencoder/gridencoder.egg-info
 raymarching/build
 raymarching/raymarching_face.egg-info
+data_utils/face_parsing/79999_iter.pth
+data_utils/face_tracking/3DMM/01_MorphableModel.mat
+data_utils/face_tracking/3DMM/sub_mesh.obj
+data_utils/face_tracking/3DMM/topology_info.npy
+data_utils/face_tracking/3DMM/exp_info.npy
+data_utils/face_tracking/3DMM/keys_info.npy
+data_utils/face_tracking/3DMM/3DMM_info.npy
+data_utils/face_tracking/pyvenv.cfg
