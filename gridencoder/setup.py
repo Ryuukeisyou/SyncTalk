@@ -2,15 +2,20 @@ import os
 from setuptools import setup
 from torch.utils.cpp_extension import BuildExtension, CUDAExtension
 
+from packaging import version
+import torch
+torch_version = torch.__version__
+use_17 = version.parse(torch_version) >= version.parse("2.1")
+
 _src_path = os.path.dirname(os.path.abspath(__file__))
 
 nvcc_flags = [
-    '-O3', '-std=c++14',
+    '-O3', '-std=c++17' if use_17 else '-std=c++14',
     '-U__CUDA_NO_HALF_OPERATORS__', '-U__CUDA_NO_HALF_CONVERSIONS__', '-U__CUDA_NO_HALF2_OPERATORS__',
 ]
 
 if os.name == "posix":
-    c_flags = ['-O3', '-std=c++14']
+    c_flags = ['-O3', '-std=c++17' if use_17 else '-std=c++14']
 elif os.name == "nt":
     c_flags = ['/O2', '/std:c++17']
 

@@ -4,16 +4,18 @@ import torch
 import torch.nn as nn
 from torch.autograd import Function
 from torch.autograd.function import once_differentiable
-from torch.cuda.amp import custom_bwd, custom_fwd 
+from torch.amp import custom_bwd, custom_fwd 
 
 try:
     import _shencoder as _backend
 except ImportError:
     from .backend import _backend
 
+device_type = "cuda" if torch.cuda.is_available() else "cpu"
+
 class _sh_encoder(Function):
     @staticmethod
-    @custom_fwd(cast_inputs=torch.float32) # force float32 for better precision
+    @custom_fwd(cast_inputs=torch.float32, device_type=device_type) # force float32 for better precision
     def forward(ctx, inputs, degree, calc_grad_inputs=False):
         # inputs: [B, input_dim], float in [-1, 1]
         # RETURN: [B, F], float
@@ -38,7 +40,7 @@ class _sh_encoder(Function):
     
     @staticmethod
     #@once_differentiable
-    @custom_bwd
+    @custom_bwd(device_type=device_type)
     def backward(ctx, grad):
         # grad: [B, C * C]
 

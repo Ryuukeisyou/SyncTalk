@@ -171,7 +171,7 @@ class NeRFDataset:
                 elif self.opt.asr_model == 'ave':
                     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
                     model = AudioEncoder().to(device).eval()
-                    ckpt = torch.load('./nerf_triplane/checkpoints/audio_visual_encoder.pth')
+                    ckpt = torch.load(os.path.join(os.path.dirname(__file__), 'checkpoints/audio_visual_encoder.pth'))
                     model.load_state_dict({f'audio_encoder.{k}': v for k, v in ckpt.items()})
                     dataset = AudDataset(os.path.join(self.root_path, 'aud.wav'))
                     data_loader = DataLoader(dataset, batch_size=64, shuffle=False)
@@ -194,7 +194,7 @@ class NeRFDataset:
                     try:
                         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
                         model = AudioEncoder().to(device).eval()
-                        ckpt = torch.load('./nerf_triplane/checkpoints/audio_visual_encoder.pth')
+                        ckpt = torch.load(os.path.join(os.path.dirname(__file__), 'checkpoints/audio_visual_encoder.pth'))
                         model.load_state_dict({f'audio_encoder.{k}': v for k, v in ckpt.items()})
                         dataset = AudDataset(self.opt.aud)
                         data_loader = DataLoader(dataset, batch_size=64, shuffle=False)
