@@ -3,8 +3,8 @@ __pycache__/
 .vscode/
 .tmp
 .cache
-data/
 model/
 dist/
 build/
+pretrained/
 *.egg-info
