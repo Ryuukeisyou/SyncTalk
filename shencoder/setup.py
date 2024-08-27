@@ -11,7 +11,7 @@ _src_path = os.path.dirname(os.path.abspath(__file__))
 
 nvcc_flags = [
     '-O3', '-std=c++17' if use_17 else '-std=c++14',
-    '-U__CUDA_NO_HALF_OPERATORS__', '-U__CUDA_NO_HALF_CONVERSIONS__', '-U__CUDA_NO_HALF2_OPERATORS__',
+    '-U__CUDA_NO_HALF_OPERATORS__', '-U__CUDA_NO_HALF_CONVERSIONS__', '-U__CUDA_NO_HALF2_OPERATORS__', '-allow-unsupported-compiler'
 ]
 
 if os.name == "posix":
@@ -22,8 +22,8 @@ elif os.name == "nt":
     # find cl.exe
     def find_cl_path():
         import glob
-        for edition in ["Enterprise", "Professional", "BuildTools", "Community"]:
-            paths = sorted(glob.glob(r"C:\\Program Files (x86)\\Microsoft Visual Studio\\*\\%s\\VC\\Tools\\MSVC\\*\\bin\\Hostx64\\x64" % edition), reverse=True)
+        for edition in ["Enterprise", "Professional", "BuildTools", "Community", "Preview"]:
+            paths = sorted(glob.glob(r"C:\\Program Files*\\Microsoft Visual Studio\\*\\%s\\VC\\Tools\\MSVC\\*\\bin\\Hostx64\\x64" % edition), reverse=True)
             if paths:
                 return paths[0]
 
