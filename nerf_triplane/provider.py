@@ -278,9 +278,58 @@ class NeRFDataset:
         self.lips_rect = []
         self.eye_area = []
         self.eye_rect = []
+        
+        # add for paste back to raw image
+        if self.opt.raw_paste_back:
+            self.raw_imgs = [] 
+            self.ori_imgs = []
+            self.combine_masks = []
+            self.inverted_combine_masks = []
+            self.raw_bboxs = []
+            bbox_json_path = os.path.join(self.root_path, 'raw_imgs', 'bbox_data.json')
+            with open(bbox_json_path, 'r') as bbox_json:
+                bbox_data = json.load(bbox_json)
 
         for f in tqdm.tqdm(frames, desc=f'Loading {type} data'):
 
+            # add for paste back to raw image
+            if self.opt.raw_paste_back:
+                raw_bbox = bbox_data[f['img_id']]
+                raw_bbox = (raw_bbox['l'], raw_bbox['t'], raw_bbox['r'], raw_bbox['b'])
+                self.raw_bboxs.append(raw_bbox)
+                raw_path = os.path.join(self.root_path, 'raw_imgs', str(f['img_id']) + '.jpg')
+                if not os.path.exists(raw_path):
+                    print('[WARN]', raw_path, 'NOT FOUND!')
+                    continue
+                if self.preload > 0:
+                    raw_img = cv2.imread(raw_path, cv2.IMREAD_UNCHANGED)
+                    raw_img = cv2.cvtColor(raw_img, cv2.COLOR_BGR2RGB)
+                    self.raw_imgs.append(raw_img)
+                else:
+                    self.raw_imgs.append(raw_path)
+                ori_path = os.path.join(self.root_path, 'ori_imgs', str(f['img_id']) + '.jpg')
+                if not os.path.exists(ori_path):
+                    print('[WARN]', ori_path, 'NOT FOUND!')
+                    continue
+                if self.preload > 0:
+                    ori_img = cv2.imread(ori_path, cv2.IMREAD_UNCHANGED)
+                    ori_img = cv2.cvtColor(ori_img, cv2.COLOR_BGR2RGB)
+                    self.ori_imgs.append(ori_img)
+                else:
+                    self.ori_imgs.append(ori_path)
+                combine_mask_path = os.path.join(self.root_path, 'parsing', str(f['img_id']) + '_combine.png')
+                if not os.path.exists(combine_mask_path):
+                    print('[WARN]', combine_mask_path, 'NOT FOUND!')
+                    continue
+                if self.preload > 0:
+                    combine_mask = cv2.imread(combine_mask_path, cv2.IMREAD_GRAYSCALE)
+                    combine_mask = np.expand_dims(combine_mask, axis=-1)
+                    combine_mask = combine_mask.astype(np.float32) / 255
+                    self.combine_masks.append(combine_mask)
+                    self.inverted_combine_masks.append(1 - combine_mask)
+                else:
+                    self.combine_masks.append(combine_mask_path)      
+                     
             f_path = os.path.join(self.root_path, 'gt_imgs', str(f['img_id']) + '.jpg')
 
             if not os.path.exists(f_path):
@@ -625,6 +674,30 @@ class NeRFDataset:
             bg_face_mask = bg_face_mask.to(self.device)
             results['bg_face_mask'] = bg_face_mask
 
+        if self.opt.raw_paste_back:
+            raw_img = self.raw_imgs[index[0]]
+            if self.preload == 0:
+                raw_img = cv2.imread(raw_img, cv2.IMREAD_UNCHANGED) # [H, W, 3]
+                raw_img = cv2.cvtColor(raw_img, cv2.COLOR_BGR2RGB)
+            results['raw_img'] = raw_img
+            
+            ori_img = self.ori_imgs[index[0]]
+            if self.preload == 0:
+                ori_img = cv2.imread(ori_img, cv2.IMREAD_UNCHANGED) # [H, W, 3]
+                ori_img = cv2.cvtColor(ori_img, cv2.COLOR_BGR2RGB)
+            results['ori_img'] = ori_img
+            
+            combine_mask = self.combine_masks[index[0]]
+            inverted_combine_mask = self.inverted_combine_masks[index[0]]
+            if self.preload == 0:
+                combine_mask = cv2.imread(combine_mask, cv2.IMREAD_GRAYSCALE)
+                combine_mask = np.expand_dims(combine_mask, axis=-1)
+                combine_mask = combine_mask.astype(np.float32) / 255
+                inverted_combine_mask = 1 - combine_mask
+            results['combine_mask'] = combine_mask
+            results['inverted_combine_mask'] = inverted_combine_mask
+            
+            results['raw_bbox'] = self.raw_bboxs[index[0]]
 
         images = self.images[index] # [B, H, W, 3/4]
         if self.preload == 0:

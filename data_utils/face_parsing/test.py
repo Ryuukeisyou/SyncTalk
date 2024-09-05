@@ -101,6 +101,32 @@ def vis_parsing_maps(im, parsing_anno, stride, save_im=False, save_path='vis_res
 
     cv2.imwrite(save_path.replace('.png', '_face.png'), vis_im)
 
+def combine_mask(im, parsing_anno, save_path):
+    DILATION = 45
+    GAUSSIAN_KERNEL_SIZE = 65
+    GAUSSIAN_DEVIATION = 0
+    
+    # add paste back for key regions.
+    im = np.array(im)
+    mask_im = np.zeros_like(im, dtype=np.uint8)
+    vis_parsing_anno = parsing_anno.copy().astype(np.uint8)
+    # get mouse, lips
+    for pi in range(11, 14):
+        index = np.where(vis_parsing_anno == pi)
+        mask_im[index[0], index[1], :] = np.array([255, 255, 255])
+    # get nose
+    for pi in range(10, 12):
+        index = np.where(vis_parsing_anno == pi)
+        mask_im[index[0], index[1], :] = np.array([255, 255, 255])
+    # dilate 
+    kernel = np.ones((DILATION, DILATION), np.uint8)
+    mask_im = cv2.dilate(mask_im, kernel=kernel, iterations=1)
+    # gaussion blur
+    mask_im = cv2.GaussianBlur(mask_im, (GAUSSIAN_KERNEL_SIZE, GAUSSIAN_KERNEL_SIZE), GAUSSIAN_DEVIATION)
+    # save mask
+    mask_path = save_path.replace('.png', '_combine.png')
+    cv2.imwrite(mask_path, mask_im)
+    
 
 def evaluate(respth='./res/test_res', dspth='./data', cp='model_final_diss.pth'):
 
@@ -136,6 +162,7 @@ def evaluate(respth='./res/test_res', dspth='./data', cp='model_final_diss.pth')
                 image_path = int(image_path[:-4])
                 image_path = str(image_path) + '.png'
 
+                combine_mask(image, parsing, osp.join(respth, image_path))
                 vis_parsing_maps(image, parsing, stride=1, save_im=True, save_path=osp.join(respth, image_path), img_size=ori_size)
 
 

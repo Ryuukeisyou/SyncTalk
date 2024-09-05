@@ -1618,8 +1618,9 @@ def _normalize(S):
 
 
 class AudDataset(object):
-    def __init__(self, wavpath):
-        wav = load_wav(wavpath, 16000)
+    def __init__(self, wavpath, wav=None):
+        if wav is None:
+            wav = load_wav(wavpath, 16000)
 
         self.orig_mel = melspectrogram(wav).T
         self.data_len = int((self.orig_mel.shape[0] - 16) / 80. * float(25)) + 2

@@ -1,5 +1,6 @@
 import os
 import glob
+import sys
 import tqdm
 import json
 import argparse
@@ -24,10 +25,10 @@ def extract_audio_features(path, mode='ave'):
     if mode == 'ave':
         print(f'AVE has been integrated into the training code, no need to extract audio features')
     elif mode == "deepspeech": # deepspeech
-        cmd = f'python data_utils/deepspeech_features/extract_ds_features.py --input {path}'
+        cmd = f'{sys.executable} data_utils/deepspeech_features/extract_ds_features.py --input {path}'
         os.system(cmd)
     elif mode == 'hubert':
-        cmd = f'python data_utils/hubert.py --wav {path}' # save to data/<name>_hu.npy
+        cmd = f'{sys.executable} data_utils/hubert.py --wav {path}' # save to data/<name>_hu.npy
         os.system(cmd)
     print(f'[INFO] ===== extracted audio labels =====')
 
@@ -39,11 +40,80 @@ def extract_images(path, out_path, fps=25):
     os.system(cmd)
     print(f'[INFO] ===== extracted images =====')
 
+def extract_faces(raw_imgs_dir, ori_imgs_dir):
+    """
+    Extract faces from raw images as ori imgs.
+    """
+    print(f'[INFO] ===== extract faces from {raw_imgs_dir} to {ori_imgs_dir} =====')
+    pad_ratio = 0.6
+    size = 512
+    target_size = 512
+    bboxs = []
+    window_size = 200
+    bbox_data = []
+    
+    fa = face_alignment.FaceAlignment(face_alignment.LandmarksType.TWO_D, flip_input=False)
+    image_paths = glob.glob(os.path.join(raw_imgs_dir, '*.jpg'))
+    def extract_number(file_name: str):
+        return int(file_name.split('.')[0].split('/')[-1])
+    sorted_paths = sorted(image_paths, key=extract_number)
+    
+    for idx, image_path in enumerate(tqdm.tqdm(sorted_paths)):
+        input = cv2.imread(image_path, cv2.IMREAD_UNCHANGED) # [H, W, 3]
+        input = cv2.cvtColor(input, cv2.COLOR_BGR2RGB)
+        preds = fa.get_landmarks_from_image(input, return_bboxes=True)
+        bbox = preds[2][0] # type: ignore
+        l, t, r, b, e = bbox
+        if e < 0.5:
+            raise ValueError("Face not detected")
+        if idx == 0:
+            # use the first image to decide crop size
+            w = r - l
+            h = b - t
+            size = max(w, h) * (1 + pad_ratio)
+        # get center point
+        lr_mid = (l + r) / 2
+        tb_mid = (t + b) / 2
+        # get current bbox
+        l = lr_mid - size / 2
+        r = lr_mid + size / 2
+        t = tb_mid - size / 2
+        b = tb_mid + size / 2
+        if idx == 0:
+            for _ in range(window_size):
+                bboxs.append(np.array([l, t, r, b]))
+        # store current bbox
+        bboxs.append(np.array([l, t, r, b]))
+        bboxs = bboxs[-window_size:]
+        # compute an average as actual value
+        avg_bbox = np.average(bboxs, axis=0)
+        bboxs[-1] = avg_bbox
+        l, t, r, b = avg_bbox.astype(np.int16)
+        # crop and resize image
+        cropped_image = input[t:b, l:r]
+        resized_image = cv2.resize(cropped_image, (target_size, target_size), interpolation=cv2.INTER_LANCZOS4)
+        final_image = cv2.cvtColor(resized_image, cv2.COLOR_RGB2BGR)
+        # save image
+        image_name = os.path.basename(image_path)
+        cv2.imwrite(os.path.join(ori_imgs_dir, image_name), final_image)
+        # save bbox data
+        bbox_data.append({
+            "l": int(l), 
+            "t": int(t),
+            "r": int(r),
+            "b": int(b)
+        })
+        
+    # Save bbox_data to json.
+    bbox_data_path = os.path.join(raw_imgs_dir, "bbox_data.json")
+    with open(bbox_data_path, 'w') as json_file:
+        json.dump(bbox_data, json_file, indent=4)
+    print(f'[INFO] ===== extracted faces =====')
 
 def extract_semantics(ori_imgs_dir, parsing_dir):
 
     print(f'[INFO] ===== extract semantics from {ori_imgs_dir} to {parsing_dir} =====')
-    cmd = f'python data_utils/face_parsing/test.py --respath={parsing_dir} --imgpath={ori_imgs_dir}'
+    cmd = f'{sys.executable} data_utils/face_parsing/test.py --respath={parsing_dir} --imgpath={ori_imgs_dir}'
     os.system(cmd)
     print(f'[INFO] ===== extracted semantics =====')
 
@@ -253,7 +323,7 @@ def face_tracking(ori_imgs_dir):
     tmp_image = cv2.imread(image_paths[0], cv2.IMREAD_UNCHANGED) # [H, W, 3]
     h, w = tmp_image.shape[:2]
 
-    cmd = f'python data_utils/face_tracking/face_tracker.py --path={ori_imgs_dir} --img_h={h} --img_w={w} --frame_num={len(image_paths)}'
+    cmd = f'{sys.executable} data_utils/face_tracking/face_tracker.py --path={ori_imgs_dir} --img_h={h} --img_w={w} --frame_num={len(image_paths)}'
 
     os.system(cmd)
 
@@ -279,7 +349,7 @@ def extract_flow(base_dir,ori_imgs_dir,mask_dir, flow_dir):
                        base_dir + '/ori_imgs/' + '{:d}.jpg '.format(i) +
                        base_dir + '/face_mask/' + '{:d}.png\n'.format(i))
         file.close()
-    ext_flow_cmd = 'python data_utils/UNFaceFlow/test_flow.py --datapath=' + base_dir + '/flow_list.txt ' + \
+    ext_flow_cmd = f'{sys.executable} data_utils/UNFaceFlow/test_flow.py --datapath=' + base_dir + '/flow_list.txt ' + \
         '--savepath=' + base_dir + '/flow_result' + \
         ' --width=' + str(w) + ' --height=' + str(h)
     os.system(ext_flow_cmd)
@@ -349,13 +419,13 @@ def extract_flow(base_dir,ori_imgs_dir,mask_dir, flow_dir):
             track_xys[i, j, 1] = y + flow[1, y, x]
     np.save(os.path.join(base_dir, 'track_xys.npy'), track_xys)
 
-    pose_opt_cmd = 'python data_utils/face_tracking/bundle_adjustment.py --path=' + base_dir + ' --img_h=' + \
+    pose_opt_cmd = f'{sys.executable} data_utils/face_tracking/bundle_adjustment.py --path=' + base_dir + ' --img_h=' + \
         str(h) + ' --img_w=' + str(w)
     os.system(pose_opt_cmd)
 
 def extract_blendshape(base_dir):
     print(f'[INFO] ===== extract blendshape =====')
-    blendshape_cmd = 'python data_utils/blendshape_capture/main.py --path=' + base_dir
+    blendshape_cmd = f'{sys.executable} data_utils/blendshape_capture/main.py --path=' + base_dir
     os.system(blendshape_cmd)
 
 
@@ -427,6 +497,7 @@ if __name__ == '__main__':
     base_dir = os.path.dirname(opt.path)
     
     wav_path = os.path.join(base_dir, 'aud.wav')
+    raw_imgs_dir = os.path.join(base_dir, 'raw_imgs')
     ori_imgs_dir = os.path.join(base_dir, 'ori_imgs')
     parsing_dir = os.path.join(base_dir, 'parsing')
     gt_imgs_dir = os.path.join(base_dir, 'gt_imgs')
@@ -434,7 +505,7 @@ if __name__ == '__main__':
     mask_imgs_dir = os.path.join(base_dir, 'face_mask')
     flow_dir = os.path.join(base_dir, 'flow_result')
 
-
+    os.makedirs(raw_imgs_dir, exist_ok=True)
     os.makedirs(ori_imgs_dir, exist_ok=True)
     os.makedirs(parsing_dir, exist_ok=True)
     os.makedirs(gt_imgs_dir, exist_ok=True)
@@ -444,13 +515,17 @@ if __name__ == '__main__':
 
 
     # extract audio
-    if opt.task == -1 or opt.task == 1:
+    if opt.task == -1 or opt.task == 0:
         extract_audio(opt.path, wav_path)
         extract_audio_features(wav_path, mode=opt.asr)
 
-    # extract images
+    # extract raw images
+    if opt.task == -1 or opt.task == 1:
+        extract_images(opt.path, raw_imgs_dir)
+    
+    # Extract faces as ori images.
     if opt.task == -1 or opt.task == 2:
-        extract_images(opt.path, ori_imgs_dir)
+        extract_faces(raw_imgs_dir, ori_imgs_dir)
 
     # face parsing
     if opt.task == -1 or opt.task == 3:
